@@ -3,15 +3,8 @@ from ultralytics import YOLO
 import torch
 import time
 
-
-# roubleshoot incoming traffic to mac
-# sudo tcpdump -i any -n port 1935
-
-
 # RTMP URL
 rtmp_url = 'rtmp://0.0.0.0:1935/live'
-
-# Load the YOLOv8 model (make sure you have the correct path to your fine-tuned model)
 
 # Check if MPS (Metal) is available
 if torch.backends.mps.is_available():
@@ -21,9 +14,25 @@ else:
     device = torch.device("cpu")  # Fallback to CPU
     print("MPS is not available, using CPU.")
 
+# Load the YOLOv8 model
 model = YOLO('../models/yolov8n_custom_200_epoches_CPU_510_images.pt')
 model.to(device)
 
+
+# Check if the model is quantized
+def check_model_quantization(model):
+    quantized = True  # Assume it's quantized until proven otherwise
+    for param in model.model.parameters():  # Access the model's parameters
+        if param.dtype != torch.int8:  # Check if the parameter is not INT8
+            quantized = False
+            break
+    return quantized
+
+
+if check_model_quantization(model):
+    print("The model is quantized.")
+else:
+    print("The model is not quantized.")
 
 # Open the video stream
 cap = cv2.VideoCapture(0)
@@ -33,8 +42,11 @@ if not cap.isOpened():
     print("Error: Could not open video stream.")
     exit()
 
-# Read and display frames from the stream
+# Initialize variables for FPS calculation
+frame_count = 0
+start_time = time.time()
 
+# Read and display frames from the stream
 counter = 0
 while True:
     # Capture frame-by-frame
@@ -46,6 +58,9 @@ while True:
 
     # If the frame was read correctly, process it
     if ret:
+        # Measure processing time for the frame
+        frame_start_time = time.time()
+
         # Run YOLO model prediction
         results = model(frame)  # You can pass the frame directly to the model
 
@@ -64,6 +79,16 @@ while True:
                 # Put label (class and confidence score)
                 label = f'{model.names[cls]} {conf:.2f}'
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+
+        # Measure the end time for frame processing
+        frame_processing_time = time.time() - frame_start_time
+        frame_count += 1
+
+        # Calculate FPS every 10 frames
+        if frame_count % 10 == 0:
+            elapsed_time = time.time() - start_time
+            fps = frame_count / elapsed_time
+            print(f"FPS: {fps:.2f}")
 
         # Display the frame with bounding boxes
         cv2.imshow('RTMP Stream - YOLO Predictions', frame)
