@@ -21,12 +21,12 @@ else:
     device = torch.device("cpu")  # Fallback to CPU
     print("MPS is not available, using CPU.")
 
-model = YOLO('../yolov8n_custom_200_epoches_CPU_510_images.pt')
+model = YOLO('../models/yolov8n_custom_200_epoches_CPU_510_images.pt')
 model.to(device)
 
 
 # Open the video stream
-cap = cv2.VideoCapture(rtmp_url)
+cap = cv2.VideoCapture(0)
 
 # Check if the stream was opened successfully
 if not cap.isOpened():
