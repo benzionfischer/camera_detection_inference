@@ -27,7 +27,7 @@ while True:
         break
 
     counter = counter + 1
-    if counter % 4 != 0:
+    if counter % 7 != 0:
         continue
 
     # Perform inference
