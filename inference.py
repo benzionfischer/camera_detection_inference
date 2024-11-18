@@ -13,7 +13,7 @@ else:
     print("MPS is not available, using CPU.")
 
 # Load the YOLO model
-model_path = 'yolov8n_custom_200_epoches_CPU_510_images_float32.tflite'
+model_path = 'yolo11n_ncnn_model'
 tflite_model = YOLO(model_path)
 
 # OpenCV to capture video
