@@ -1,12 +1,13 @@
 import cv2
-from ultralytics import YOLO
-import torch
+import numpy as np
 import time
+import tflite_runtime.interpreter as tflite
 
 # RTMP URL
 rtmp_url = 'rtmp://0.0.0.0:1935/live'
 
 # Check if MPS (Metal) is available
+import torch
 if torch.backends.mps.is_available():
     device = torch.device("mps")  # Use MPS (GPU) on macOS
     print("MPS is available and will be used for computation.")
@@ -14,25 +15,14 @@ else:
     device = torch.device("cpu")  # Fallback to CPU
     print("MPS is not available, using CPU.")
 
-# Load the YOLOv8 model
-model = YOLO('../models/yolov8n_custom_200_epoches_CPU_510_images.pt')
-model.to(device)
+# Load the TensorFlow Lite model
+model_path = '../models/yolov8n_custom_200_epoches_CPU_510_images_float16.tflite'
+interpreter = tflite.Interpreter(model_path=model_path)
+interpreter.allocate_tensors()
 
-
-# Check if the model is quantized
-def check_model_quantization(model):
-    quantized = True  # Assume it's quantized until proven otherwise
-    for param in model.model.parameters():  # Access the model's parameters
-        if param.dtype != torch.int8:  # Check if the parameter is not INT8
-            quantized = False
-            break
-    return quantized
-
-
-if check_model_quantization(model):
-    print("The model is quantized.")
-else:
-    print("The model is not quantized.")
+# Get model input and output details
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
 # Open the video stream
 cap = cv2.VideoCapture(0)
@@ -58,26 +48,42 @@ while True:
 
     # If the frame was read correctly, process it
     if ret:
-        # Measure processing time for the frame
-        frame_start_time = time.time()
+        # Resize the frame to the required input size for YOLOv8 model (e.g., 640x640)
+        input_shape = input_details[0]['shape']
+        input_size = (input_shape[1], input_shape[2])
+        resized_frame = cv2.resize(frame, input_size)
 
-        # Run YOLO model prediction
-        results = model(frame)  # You can pass the frame directly to the model
+        # Normalize and prepare input data
+        input_data = np.expand_dims(resized_frame, axis=0).astype(np.float32)
+        input_data = np.array(input_data)
+
+        # Set input tensor
+        interpreter.set_tensor(input_details[0]['index'], input_data)
+
+        # Run inference
+        interpreter.invoke()
+
+        # Get output tensor
+        output_data = interpreter.get_tensor(output_details[0]['index'])
+
+        # Process the results
+        boxes = output_data[0][:, :4]  # Get bounding boxes (x1, y1, x2, y2)
+        confidences = output_data[0][:, 4]  # Get confidence scores
+        class_ids = output_data[0][:, 5].astype(int)  # Get class IDs
 
         # Loop over the detections and draw bounding boxes
-        for result in results:
-            for box in result.boxes:
-                # Extract bounding box coordinates and class predictions
-                xyxy = box.xyxy[0].cpu().numpy().astype(int)  # Convert to numpy array and then to integers
-                x1, y1, x2, y2 = xyxy  # Bounding box (x1, y1, x2, y2)
-                conf = box.conf[0]  # Confidence score
-                cls = int(box.cls[0])  # Class index
+        for i in range(len(boxes)):
+            if confidences[i] > 0.5:  # Filter out low-confidence detections
+                x1, y1, x2, y2 = boxes[i]
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                conf = confidences[i]
+                cls = class_ids[i]
 
                 # Draw bounding box
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
                 # Put label (class and confidence score)
-                label = f'{model.names[cls]} {conf:.2f}'
+                label = f'Class {cls} {conf:.2f}'
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
 
         # Measure the end time for frame processing
