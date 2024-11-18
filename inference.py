@@ -26,6 +26,7 @@ while True:
     if not ret:
         break
 
+    counter = counter + 1
     if counter % 2 == 0:
         continue
 
