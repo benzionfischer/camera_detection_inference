@@ -34,9 +34,9 @@ while True:
         break
 
 
-    # counter += 1
-    # if counter % 6 != 0:
-    #     continue
+    counter += 1
+    if counter % 6 != 0:
+        continue
 
     # Start timer for inference
     start_time = time.time()
