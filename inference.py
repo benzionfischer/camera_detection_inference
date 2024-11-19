@@ -19,19 +19,38 @@ tflite_model = YOLO(model_path)
 # OpenCV to capture video
 cap = cv2.VideoCapture(0)  # Use webcam input
 
-
 counter = 0
 while True:
+
+    # Start timer for inference
+    start_time = time.time()
+
     ret, frame = cap.read()
+
+    # Stop timer and calculate duration
+    opencv_time = time.time() - start_time
+
     if not ret:
         break
 
-    counter = counter + 1
-    if counter % 6 != 0:
-        continue
+
+    # counter += 1
+    # if counter % 6 != 0:
+    #     continue
+
+    # Start timer for inference
+    start_time = time.time()
 
     # Perform inference
     results = tflite_model(frame)
+
+    # Stop timer and calculate duration
+    inference_time = time.time() - start_time
+    print(f"opencv Time: {opencv_time:.4f} seconds")
+    print(f"Inference Time: {inference_time:.4f} seconds")
+
+    # Start timer for inference
+    start_time = time.time()
 
     # Process each detection
     for result in results[0].boxes:  # Access boxes from results
@@ -55,6 +74,10 @@ while True:
 
     # Display the frame
     cv2.imshow('YOLO Inference', frame)
+
+    # Stop timer and calculate duration
+    presentation_time = time.time() - start_time
+    print(f"Presentation Time: {presentation_time:.4f} seconds")
 
     # Exit with 'q' key
     if cv2.waitKey(1) & 0xFF == ord('q'):
