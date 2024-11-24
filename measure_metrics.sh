@@ -24,7 +24,7 @@ get_throttled_status() {
 # Loop to monitor metrics
 while true; do
     # Get the temperature
-    temp=$(vcgencmd measure_temp | awk -F= '{print $2}' | sed 's/\'C//')
+    temp=$(vcgencmd measure_temp | awk -F= '{print $2}' | sed 's/°C//')
 
     # Get throttling status
     throttled_status=$(get_throttled_status)
@@ -37,3 +37,4 @@ while true; do
     # Wait 5 seconds before the next iteration
     sleep 5
 done
+``
