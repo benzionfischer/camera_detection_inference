@@ -19,7 +19,6 @@ tflite_model = YOLO(model_path)
 # OpenCV to capture video
 cap = cv2.VideoCapture(0)  # Use webcam input
 
-counter = 0
 while True:
 
     # Start timer for inference
@@ -32,11 +31,6 @@ while True:
 
     if not ret:
         break
-
-
-    counter += 1
-    if counter % 6 != 0:
-        continue
 
     # Start timer for inference
     start_time = time.time()
